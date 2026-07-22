@@ -41,8 +41,8 @@ import java.util.concurrent.TimeUnit;
         name = "LuminStatus",
         version = LuminStatusPlugin.VERSION,
         description = "Generates a public status page for your network from the proxy's own view of it.",
-        url = "https://github.com/lumin-mc/LuminStatus",
-        authors = {"Lumin"}
+        url = "https://github.com/Titanius69/LuminStatus",
+        authors = {"LuminexStudios"}
 )
 public final class LuminStatusPlugin {
 
