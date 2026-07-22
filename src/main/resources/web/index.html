@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__PAGE_TITLE__</title>
+<meta name="description" content="__PAGE_TAGLINE__">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="index, follow">
+<link rel="alternate" type="application/atom+xml" title="__PAGE_TITLE__" href="feed.atom">
+<style>
+/* ---------------------------------------------------------------------------
+   No web fonts, no external assets, no framework. A status page has to render
+   when the rest of the infrastructure is on fire, including straight off disk
+   over file://, so everything it needs is in this one document.
+   --------------------------------------------------------------------------- */
+:root {
+  --surface: #f2f4f1;
+  --surface-raised: #ffffff;
+  --ink: #171c1a;
+  --ink-soft: #4a5450;
+  --muted: #79837e;
+  --rule: #dbe0dc;
+  --rule-strong: #c3ccc6;
+
+  --operational: #1f7a55;
+  --degraded: #a9721a;
+  --maintenance: #5a6772;
+  --partial_outage: #b4522c;
+  --major_outage: #9a2036;
+
+  --accent: var(--operational);
+
+  --display: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI",
+             Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", "Roboto Mono",
+          Menlo, Consolas, monospace;
+
+  --gutter: clamp(20px, 5vw, 64px);
+  --measure: 980px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #0f1412;
+    --surface-raised: #161d1a;
+    --ink: #eef2ef;
+    --ink-soft: #b3bdb8;
+    --muted: #7d8a85;
+    --rule: #26302c;
+    --rule-strong: #35413c;
+
+    --operational: #4bc48c;
+    --degraded: #d9a441;
+    --maintenance: #8d9aa4;
+    --partial_outage: #e0805a;
+    --major_outage: #e05a72;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* eyebrow: mono, tracked out, the only all-caps in the design */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* --- masthead ------------------------------------------------------------ */
+
+header.masthead {
+  border-bottom: 1px solid var(--rule);
+  padding-top: clamp(40px, 8vw, 88px);
+  padding-bottom: clamp(28px, 5vw, 48px);
+}
+
+.status-line {
+  font-size: clamp(34px, 7.4vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 640;
+  margin: 18px 0 0;
+  color: var(--accent);
+  position: relative;
+  display: inline-block;
+}
+
+/* Signature: a lamp sweep crosses the headline once on load, the way a
+   lighthouse beam passes over you. It fires once and then stops. */
+.status-line::after {
+  content: "";
+  position: absolute;
+  inset: -0.15em -0.4em;
+  pointer-events: none;
+  background: linear-gradient(100deg,
+              transparent 38%,
+              color-mix(in srgb, var(--accent) 26%, transparent) 50%,
+              transparent 62%);
+  transform: translateX(-115%);
+  animation: sweep 1500ms cubic-bezier(.22,.61,.36,1) 220ms 1 both;
+}
+
+@keyframes sweep { to { transform: translateX(115%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .status-line::after { animation: none; display: none; }
+}
+
+.masthead .meta {
+  margin: 14px 0 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.masthead .meta a { color: var(--ink-soft); }
+
+/* --- signal strip: one tick per component, network-wide at a glance ------- */
+
+.strip {
+  display: flex;
+  gap: 3px;
+  margin-top: 26px;
+  height: 30px;
+  align-items: stretch;
+}
+
+.strip .tick {
+  flex: 1 1 0;
+  min-width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.strip .tick[data-state="operational"] { color: var(--operational); }
+.strip .tick[data-state="degraded"] { color: var(--degraded); }
+.strip .tick[data-state="maintenance"] { color: var(--maintenance); }
+.strip .tick[data-state="partial_outage"] { color: var(--partial_outage); }
+.strip .tick[data-state="major_outage"] { color: var(--major_outage); }
+
+/* --- incidents ----------------------------------------------------------- */
+
+section { padding: clamp(28px, 5vw, 52px) 0; border-bottom: 1px solid var(--rule); }
+section:last-of-type { border-bottom: 0; }
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.incident {
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 20px 22px;
+  margin-bottom: 14px;
+}
+
+.incident[data-impact="degraded"] { border-left-color: var(--degraded); }
+.incident[data-impact="partial_outage"] { border-left-color: var(--partial_outage); }
+.incident[data-impact="major_outage"] { border-left-color: var(--major_outage); }
+.incident[data-impact="maintenance"] { border-left-color: var(--maintenance); }
+.incident[data-resolved="true"] { border-left-color: var(--operational); opacity: 0.72; }
+
+.incident h3 {
+  margin: 8px 0 4px;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+
+.incident .affects { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+.updates { list-style: none; margin: 16px 0 0; padding: 0; }
+
+.updates li {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 14.5px;
+}
+
+.updates time {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  padding-top: 3px;
+}
+
+.updates .stage {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  display: block;
+}
+
+/* --- components ---------------------------------------------------------- */
+
+.group + .group { margin-top: 34px; }
+
+.group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--rule-strong);
+  padding-bottom: 8px;
+}
+
+.group-head h3 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+
+.component { padding: 18px 0; border-bottom: 1px solid var(--rule); }
+
+.component-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.component-name { font-weight: 550; font-size: 16px; letter-spacing: -0.01em; }
+
+.state {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.state[data-state="operational"] { color: var(--operational); }
+.state[data-state="degraded"] { color: var(--degraded); }
+.state[data-state="maintenance"] { color: var(--maintenance); }
+.state[data-state="partial_outage"] { color: var(--partial_outage); }
+.state[data-state="major_outage"] { color: var(--major_outage); }
+
+.component-facts {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* 90-day ribbon: one hairline bar per day */
+.ribbon {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  margin-top: 12px;
+  align-items: stretch;
+}
+
+.ribbon .day {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 1.5px;
+  background: var(--operational);
+}
+
+.ribbon .day[data-level="none"] { background: var(--rule); }
+.ribbon .day[data-level="degraded"] { background: var(--degraded); }
+.ribbon .day[data-level="partial"] { background: var(--partial_outage); }
+.ribbon .day[data-level="down"] { background: var(--major_outage); }
+
+.ribbon-legend {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 7px;
+}
+
+/* Hide older days first on narrow screens: 90 two-pixel bars on a phone is mud */
+@media (max-width: 720px) {
+  .ribbon .day:nth-child(-n+45) { display: none; }
+  .ribbon-legend .start::after { content: " (45 days)"; }
+}
+
+footer {
+  padding: 34px 0 56px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+footer a { color: var(--ink-soft); }
+
+a:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.empty { color: var(--muted); font-size: 15px; margin: 0; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow" id="brand">Network status</p>
+    <h1 class="status-line" id="headline">Loading</h1>
+    <p class="meta" id="meta">Reading the latest check&hellip;</p>
+    <div class="strip" id="strip" aria-hidden="true"></div>
+  </div>
+</header>
+
+<main>
+  <section id="incidents-section" hidden>
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Incidents</p>
+      </div>
+      <div id="incidents"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Servers</p>
+        <p class="eyebrow" id="window-label"></p>
+      </div>
+      <div id="groups"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap" style="display:contents">
+    <span id="footer-note"></span>
+    <span><a href="status.json">JSON</a> &middot; <a href="feed.atom">Atom</a></span>
+  </div>
+</footer>
+
+<script id="status-data" type="application/json">__STATUS_JSON__</script>
+<script>
+(function () {
+  "use strict";
+
+  var STATE_ORDER = ["operational", "degraded", "maintenance", "partial_outage", "major_outage"];
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) { node.className = className; }
+    if (text !== undefined && text !== null) { node.textContent = text; }
+    return node;
+  }
+
+  function formatTime(epochSeconds) {
+    if (!epochSeconds) { return ""; }
+    var date = new Date(epochSeconds * 1000);
+    return date.toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function relative(epochSeconds) {
+    if (!epochSeconds) { return ""; }
+    var seconds = Math.max(0, Math.floor(Date.now() / 1000) - epochSeconds);
+    if (seconds < 60) { return seconds + "s ago"; }
+    if (seconds < 3600) { return Math.floor(seconds / 60) + "m ago"; }
+    if (seconds < 86400) { return Math.floor(seconds / 3600) + "h ago"; }
+    return Math.floor(seconds / 86400) + "d ago";
+  }
+
+  function dayLevel(day) {
+    if (day.checks === 0 || day.uptime < 0) { return "none"; }
+    if (day.uptime >= 0.999) { return "ok"; }
+    if (day.uptime >= 0.99) { return "degraded"; }
+    if (day.uptime >= 0.9) { return "partial"; }
+    return "down";
+  }
+
+  function render(data) {
+    document.title = data.title;
+    document.documentElement.style.setProperty("--accent", "var(--" + data.overall.state + ")");
+
+    document.getElementById("brand").textContent = data.title;
+    document.getElementById("headline").textContent = data.overall.summary;
+
+    var players = data.players_online > 0 ? " \u00b7 " + data.players_online + " players online" : "";
+    document.getElementById("meta").textContent =
+      "Checked " + relative(data.generated_at) + players;
+
+    document.getElementById("window-label").textContent =
+      "Last " + data.retention_days + " days";
+
+    var footer = document.getElementById("footer-note");
+    footer.textContent = data.footer || "";
+
+    // signal strip
+    var strip = document.getElementById("strip");
+    strip.textContent = "";
+    (data.groups || []).forEach(function (group) {
+      group.components.forEach(function (component) {
+        var tick = el("span", "tick");
+        tick.setAttribute("data-state", component.state);
+        tick.title = component.name + " \u2014 " + component.label;
+        strip.appendChild(tick);
+      });
+    });
+
+    // incidents
+    var incidentHost = document.getElementById("incidents");
+    incidentHost.textContent = "";
+    var incidents = data.incidents || [];
+    document.getElementById("incidents-section").hidden = incidents.length === 0;
+
+    incidents.forEach(function (incident) {
+      var card = el("article", "incident");
+      card.setAttribute("data-impact", incident.impact);
+      card.setAttribute("data-resolved", String(incident.resolved));
+
+      card.appendChild(el("p", "eyebrow",
+        incident.stage_label + " \u00b7 " + incident.impact_label));
+      card.appendChild(el("h3", null, incident.title));
+
+      if (incident.components && incident.components.length) {
+        card.appendChild(el("p", "affects", "Affects " + incident.components.join(", ")));
+      }
+
+      var list = el("ul", "updates");
+      (incident.updates || []).slice().reverse().forEach(function (update) {
+        var row = el("li");
+        var time = el("time", null, formatTime(update.at));
+        time.setAttribute("datetime", new Date(update.at * 1000).toISOString());
+        row.appendChild(time);
+        var body = el("div");
+        body.appendChild(el("span", "stage", update.stage_label));
+        body.appendChild(document.createTextNode(update.message));
+        row.appendChild(body);
+        list.appendChild(row);
+      });
+      card.appendChild(list);
+      incidentHost.appendChild(card);
+    });
+
+    // components
+    var groupHost = document.getElementById("groups");
+    groupHost.textContent = "";
+
+    if (!data.groups || !data.groups.length) {
+      groupHost.appendChild(el("p", "empty", "No servers are registered on the proxy yet."));
+      return;
+    }
+
+    data.groups.forEach(function (group) {
+      var section = el("div", "group");
+      var head = el("div", "group-head");
+      head.appendChild(el("h3", null, group.name));
+      var groupState = el("span", "state", group.label);
+      groupState.setAttribute("data-state", group.state);
+      head.appendChild(groupState);
+      section.appendChild(head);
+
+      group.components.forEach(function (component) {
+        var row = el("div", "component");
+
+        var top = el("div", "component-top");
+        top.appendChild(el("span", "component-name", component.name));
+        var state = el("span", "state", component.label);
+        state.setAttribute("data-state", component.state);
+        top.appendChild(state);
+        row.appendChild(top);
+
+        var facts = [];
+        if (component.latency_ms >= 0) { facts.push(component.latency_ms + " ms"); }
+        if (component.players >= 0) { facts.push(component.players + " players"); }
+        facts.push((component.uptime * 100).toFixed(2) + "% uptime");
+        if (component.state !== "operational" && component.changed_at) {
+          facts.push("since " + formatTime(component.changed_at));
+        }
+        row.appendChild(el("p", "component-facts", facts.join("  \u00b7  ")));
+
+        var ribbon = el("div", "ribbon");
+        ribbon.setAttribute("role", "img");
+        ribbon.setAttribute("aria-label",
+          component.name + " uptime over the last " + data.retention_days + " days: "
+          + (component.uptime * 100).toFixed(2) + " percent");
+        (component.timeline || []).forEach(function (day) {
+          var bar = el("span", "day");
+          bar.setAttribute("data-level", dayLevel(day));
+          bar.title = day.date + (day.checks === 0
+            ? " \u2014 no data"
+            : " \u2014 " + (day.uptime * 100).toFixed(2) + "%");
+          ribbon.appendChild(bar);
+        });
+        row.appendChild(ribbon);
+
+        var legend = el("div", "ribbon-legend");
+        legend.appendChild(el("span", "start", data.retention_days + " days ago"));
+        legend.appendChild(el("span", null, "today"));
+        row.appendChild(legend);
+
+        section.appendChild(row);
+      });
+
+      groupHost.appendChild(section);
+    });
+  }
+
+  function load() {
+    fetch("status.json", { cache: "no-store" })
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (data) { if (data) { render(data); } })
+      .catch(function () { /* keep showing the last good render */ });
+  }
+
+  var embedded = document.getElementById("status-data").textContent.trim();
+  if (embedded && embedded.charAt(0) === "{") {
+    try { render(JSON.parse(embedded)); } catch (error) { load(); }
+  } else {
+    load();
+  }
+
+  // Only poll when served over HTTP. Opened from disk there is nothing to poll.
+  if (location.protocol === "http:" || location.protocol === "https:") {
+    setInterval(load, 30000);
+  }
+})();
+</script>
+</body>
+</html>
